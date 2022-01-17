@@ -6,20 +6,25 @@ OBJ = $(SRC:.c=.o)
 
 NAME = a.out
 
-LIB = -l m -l csfml-graphics -l csfml-window
+CC = gcc -g
+
+LIB = -l m -l csfml-graphics -l csfml-window -g
 
 all: $(NAME)
 
 $(NAME): $(OBJ)
-	gcc -o $(NAME) $(OBJ)
+	gcc -o $(NAME) $(OBJ) $(LIB)
 
-run: all
+run: clear all
 	./$(NAME)
 
-valgrind: all
-	./$(NAME)
+valgrind: clear all
+	valgrind --leak-check=full --show-leak-kinds=definite ./$(NAME)
 
-re:
+re: clear clean all
+
+clear:
+	clear
 
 clean:
 	rm -f $(OBJ)

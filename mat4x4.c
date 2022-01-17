@@ -28,12 +28,20 @@ Mat4x4 *mat4x4_MultiplyMat4x4(Mat4x4 *mat1, Mat4x4 *mat2) {
     return mat;
 }
 
-float *mat4x4_MultiplyVector(Mat4x4 *mat, float *vector) {
+float *mat4x4_MultiplyVector4(Mat4x4 *mat, float *vector) {
     float *res = malloc(sizeof(float)*4);
     res[0] = vector[0]*mat->val[0*4+0] + vector[1]*mat->val[1*4+0] + vector[2]*mat->val[2*4+0] + vector[3]*mat->val[3*4+0];
     res[1] = vector[0]*mat->val[0*4+1] + vector[1]*mat->val[1*4+1] + vector[2]*mat->val[2*4+1] + vector[3]*mat->val[3*4+1];
     res[2] = vector[0]*mat->val[0*4+2] + vector[1]*mat->val[1*4+2] + vector[2]*mat->val[2*4+2] + vector[3]*mat->val[3*4+2];
     res[3] = vector[0]*mat->val[0*4+3] + vector[1]*mat->val[1*4+3] + vector[2]*mat->val[2*4+3] + vector[3]*mat->val[3*4+3];    
+    return res;
+}
+
+float *mat4x4_MultiplyVector3(Mat4x4 *mat, float *vector) {
+    float *res = malloc(sizeof(float)*3);
+    res[0] = vector[0]*mat->val[0*4+0] + vector[1]*mat->val[1*4+0] + vector[2]*mat->val[2*4+0];
+    res[1] = vector[0]*mat->val[0*4+1] + vector[1]*mat->val[1*4+1] + vector[2]*mat->val[2*4+1];
+    res[2] = vector[0]*mat->val[0*4+2] + vector[1]*mat->val[1*4+2] + vector[2]*mat->val[2*4+2];
     return res;
 }
 
