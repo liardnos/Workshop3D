@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window/Keyboard.h>
@@ -110,9 +111,9 @@ Mesh_t * LoadFromObjectFile(char *filename) {
 
             //printf("%i %i %i\n", mesh->tris[tri_count]._p[0], mesh->tris[tri_count]._p[1], mesh->tris[tri_count]._p[2]);
 
-            mesh->tris[tri_count]._color[0] = (unsigned char)rand();
-            mesh->tris[tri_count]._color[1] = (unsigned char)rand();
-            mesh->tris[tri_count]._color[2] = (unsigned char)rand();
+            mesh->tris[tri_count]._color[0] = 255;(unsigned char)rand();
+            mesh->tris[tri_count]._color[1] = 255;(unsigned char)rand();
+            mesh->tris[tri_count]._color[2] = 255;(unsigned char)rand();
             mesh->tris[tri_count]._color[3] = 255;
             
             tri_count++;
@@ -144,9 +145,73 @@ void normalize(float *vec) {
     vec[2] /= len;
 }
 
+size_t concatMeshs(Mesh_t *meshDest, Mesh_t *mesh1, Mesh_t *mesh2) {
+    meshDest->points_size = mesh1->points_size + mesh2->points_size;
+    meshDest->points = malloc(meshDest->points_size*sizeof(Point_t));
+    meshDest->tris_size = mesh1->tris_size + mesh2->tris_size;
+    meshDest->tris = malloc(meshDest->tris_size*sizeof(Triangle_t));
+
+    memcpy(meshDest->points                   , mesh1->points, mesh1->points_size*sizeof(Point_t));
+    memcpy(meshDest->points+mesh1->points_size, mesh2->points, mesh2->points_size*sizeof(Point_t));
+
+    memcpy(meshDest->tris                 , mesh1->tris, mesh1->tris_size*sizeof(Triangle_t));
+    memcpy(meshDest->tris+mesh1->tris_size, mesh2->tris, mesh2->tris_size*sizeof(Triangle_t));
+    
+    for (size_t i = 0; i < mesh2->tris_size; ++i) {
+        (meshDest->tris+mesh1->tris_size)[i]._p[0] += mesh1->points_size;
+        (meshDest->tris+mesh1->tris_size)[i]._p[1] += mesh1->points_size;
+        (meshDest->tris+mesh1->tris_size)[i]._p[2] += mesh1->points_size;
+    }
+
+    return mesh1->points_size;
+}
 
 int main() {
-    Mesh_t *mesh = LoadFromObjectFile("axis.obj");
+    Mesh_t *mesh_axis = LoadFromObjectFile("axis.obj");
+
+
+    /*
+     4---5
+    0---1|
+    |6--|7
+    2---3
+    */
+
+    Point_t cube_points[8] = {
+        {-0.5, -0.5, -0.5},
+        { 0.5, -0.5, -0.5},
+        {-0.5,  0.5, -0.5},
+        { 0.5,  0.5, -0.5},
+        {-0.5, -0.5,  0.5},
+        { 0.5, -0.5,  0.5},
+        {-0.5,  0.5,  0.5},
+        { 0.5,  0.5,  0.5},
+    };
+
+    Triangle_t cube_tris[] = {
+        {{1, 0, 2}, {255, 000, 000, 255}},
+        {{3, 1, 2}, {255, 000, 000, 255}},
+        {{5, 4, 0}, {000, 255, 000, 255}},
+        {{1, 5, 0}, {000, 255, 000, 255}},
+        {{5, 1, 7}, {000, 000, 255, 255}},
+        {{3, 7, 1}, {000, 000, 255, 255}},
+        {{2, 6, 3}, {255, 255, 000, 255}},
+        {{7, 3, 6}, {255, 255, 000, 255}},
+        {{4, 5, 6}, {255, 000, 255, 255}},
+        {{7, 6, 5}, {255, 000, 255, 255}},
+        {{0, 4, 2}, {000, 255, 255, 255}},
+        {{6, 2, 4}, {000, 255, 255, 255}},
+    };
+
+    Mesh_t mesh_cube;;
+    mesh_cube.points_size = 8;
+    mesh_cube.points = cube_points;
+    mesh_cube.tris_size = 12;
+    mesh_cube.tris = cube_tris;
+
+    Mesh_t *mesh = mesh_create();
+    size_t mesh_cube_offset = concatMeshs(mesh, mesh_axis, &mesh_cube);
+    mesh_destroy(mesh_axis);
 
     sfVideoMode mode = {800, 800, 32};
     sfRenderWindow* window = sfRenderWindow_create(mode, "Max & Flo 3D workshop", sfResize | sfClose, NULL);
@@ -263,17 +328,56 @@ int main() {
             Mat4x4_destroy(tmp);
         }
 
+        // calc player pos
+        Mat4x4 *matWorld_inv = mat4x4_invert(matWorld);
+        float playerPos[3] = {0, 0, 0};
+        float *tmp = mat4x4_MultiplyVector3(matWorld_inv, playerPos);
+        memcpy(playerPos, tmp, sizeof(playerPos));
+        free(tmp);
+
+        // calc player direction
+        float playerDir[3] = {0, 0, 1};
+        tmp = mat4x4_MultiplyVector3(matWorld_inv, playerDir);
+        memcpy(playerDir, tmp, sizeof(playerPos));
+        playerDir[0] -= playerPos[0];
+        playerDir[1] -= playerPos[1];
+        playerDir[2] -= playerPos[2];
+        free(tmp);
+        free(matWorld_inv);
+
+
+        printf("player pos=%f %f %f\n", playerPos[0], playerPos[1], playerPos[2]);
+        printf("player dir=%f %f %f\n", playerDir[0], playerDir[1], playerDir[2]);
+
+        // set light source
+        float lightSource[3] = {
+            playerPos[0] - playerDir[0]*10, 
+            playerPos[1] - playerDir[1]*10,
+            playerPos[2] - playerDir[2]*10,
+        };
+        //
+
+        // move light cube
+        for (size_t i = 0; i < 8; i++) {
+            mesh->points[mesh_cube_offset+i].p[0] = cube_points[i].p[0] + playerPos[0] - playerDir[0]*10;
+            mesh->points[mesh_cube_offset+i].p[1] = cube_points[i].p[1] + playerPos[1] - playerDir[1]*10;
+            mesh->points[mesh_cube_offset+i].p[2] = cube_points[i].p[2] + playerPos[2] - playerDir[2]*10;
+        }
+        //
+
+
 
         // projection
-        Point_t *points_transform = malloc(sizeof(Point_t)*mesh->points_size);
+        Point_t *points_transformed = malloc(sizeof(Point_t)*mesh->points_size);
         for (size_t i = 0; i < mesh->points_size; ++i) {
             float *vec = mat4x4_MultiplyVector3(matWorld, mesh->points[i].p);
-            memcpy(points_transform[i].p, vec, sizeof(float)*3);
-            //printf("vec= %f %f %f\n", points_transform[i].p[0], points_transform[i].p[1], points_transform[i].p[2]);
-            
+            memcpy(points_transformed[i].p, vec, sizeof(float)*3);
             free(vec);
         }
+        //
 
+
+        // sort all triangles
         typedef struct VecSort {
             uint id;
             int d;
@@ -284,76 +388,144 @@ int main() {
 
         for (uint i = 0; mesh->tris_size > i; i++) {
             float pMid[3] = {
-                points_transform[mesh->tris[i]._p[0]].p[0] + points_transform[mesh->tris[i]._p[1]].p[0] + points_transform[mesh->tris[i]._p[2]].p[0],
-                points_transform[mesh->tris[i]._p[0]].p[1] + points_transform[mesh->tris[i]._p[1]].p[1] + points_transform[mesh->tris[i]._p[2]].p[1],
-                points_transform[mesh->tris[i]._p[0]].p[2] + points_transform[mesh->tris[i]._p[1]].p[2] + points_transform[mesh->tris[i]._p[2]].p[2],
+                points_transformed[mesh->tris[i]._p[0]].p[0] + points_transformed[mesh->tris[i]._p[1]].p[0] + points_transformed[mesh->tris[i]._p[2]].p[0],
+                points_transformed[mesh->tris[i]._p[0]].p[1] + points_transformed[mesh->tris[i]._p[1]].p[1] + points_transformed[mesh->tris[i]._p[2]].p[1],
+                points_transformed[mesh->tris[i]._p[0]].p[2] + points_transformed[mesh->tris[i]._p[1]].p[2] + points_transformed[mesh->tris[i]._p[2]].p[2],
             };
 
             sortBuffer[i].id = i;
             sortBuffer[i].d = -(pMid[0]*pMid[0] + pMid[1]*pMid[1] + pMid[2]*pMid[2]);
         }
 
+        radixSortObjInt(sortBuffer, sizeof(VecSort_t), mesh->tris_size, (size_t)&((VecSort_t *)0)->d, sortBuffer+mesh->tris_size);
+        //
+
+
         // FOV
         for (size_t i = 0; i < mesh->points_size; ++i) {
-            points_transform[i].p[0] /= points_transform[i].p[2];
-            points_transform[i].p[1] /= points_transform[i].p[2];
+            points_transformed[i].p[0] /= points_transformed[i].p[2];
+            points_transformed[i].p[1] /= points_transformed[i].p[2];
         }
-
-        radixSortObjInt(sortBuffer, sizeof(VecSort_t), mesh->tris_size, (size_t)&((VecSort_t *)0)->d, sortBuffer+mesh->tris_size);
+        //
 
         sfConvexShape *shape = sfConvexShape_create();
         sfConvexShape_setPointCount(shape, 3);
         for (size_t i = 0; i < mesh->tris_size; ++i) {
             size_t id = sortBuffer[i].id;
 
-            float *points[3] = {
-                points_transform[mesh->tris[id]._p[0]].p,
-                points_transform[mesh->tris[id]._p[1]].p,
-                points_transform[mesh->tris[id]._p[2]].p
+            float *vec_transformed[3] = {
+                points_transformed[mesh->tris[id]._p[0]].p,
+                points_transformed[mesh->tris[id]._p[1]].p,
+                points_transformed[mesh->tris[id]._p[2]].p
             };
 
-            if (points[0][2] > 0 || points[1][2] > 0 || points[2][2] > 0)
-                continue;
-            float vecs[2][3] = {
-                {
-                    points[0][0] - points[1][0],
-                    points[0][1] - points[1][1],
-                    points[0][2] - points[1][2],
-                },
-                {
-                    points[0][0] - points[2][0],
-                    points[0][1] - points[2][1],
-                    points[0][2] - points[2][2],
-                },
+            float *vec_original[3] = {
+                mesh->points[mesh->tris[id]._p[0]].p,
+                mesh->points[mesh->tris[id]._p[1]].p,
+                mesh->points[mesh->tris[id]._p[2]].p
             };
 
-            normalize(vecs[0]);
-            normalize(vecs[1]);
-            float normale[3];
-            float cameraDirection[3] = {0, 0, 1};
-            crossProduct3(normale, vecs[0], vecs[1]);
-            float direction = dotProduct3(normale, cameraDirection);
-
-            if (direction < 0)
+            // is shape partialy behind?
+            if (vec_transformed[0][2] > 0 || vec_transformed[1][2] > 0 || vec_transformed[2][2] > 0)
                 continue;
+            //
 
+            { 
+                // calc triangle normal (perpenticular segment)
+                float vecs[2][3] = {
+                    {
+                        vec_transformed[0][0] - vec_transformed[1][0],
+                        vec_transformed[0][1] - vec_transformed[1][1],
+                        vec_transformed[0][2] - vec_transformed[1][2],
+                    },
+                    {
+                        vec_transformed[0][0] - vec_transformed[2][0],
+                        vec_transformed[0][1] - vec_transformed[2][1],
+                        vec_transformed[0][2] - vec_transformed[2][2],
+                    },
+                };
+
+                normalize(vecs[0]);
+                normalize(vecs[1]);
+                float normale[3];
+                crossProduct3(normale, vecs[0], vecs[1]);
+                normalize(normale);
+                //
+
+                // is shape facing backward?
+                float cameraDirection[3] = {0, 0, 1};
+                float direction = dotProduct3(normale, cameraDirection);
+
+                if (direction < 0)
+                    continue;
+                //
+            } 
+
+            // FOV
             sfVector2f vec[] = {
-                {(points[0][0]+1)*(mode.width/2), (points[0][1]+1)*(mode.height/2)},
-                {(points[1][0]+1)*(mode.width/2), (points[1][1]+1)*(mode.height/2)},
-                {(points[2][0]+1)*(mode.width/2), (points[2][1]+1)*(mode.height/2)},
+                {(vec_transformed[0][0]+1)*(mode.width/2), (vec_transformed[0][1]+1)*(mode.height/2)},
+                {(vec_transformed[1][0]+1)*(mode.width/2), (vec_transformed[1][1]+1)*(mode.height/2)},
+                {(vec_transformed[2][0]+1)*(mode.width/2), (vec_transformed[2][1]+1)*(mode.height/2)},
             };
+            //
+
+            sfColor color;
+            memcpy(&color, mesh->tris[id]._color, sizeof(sfColor));
+
+
+            { // light
+                float vecs[2][3] = {
+                    {
+                        vec_original[0][0] - vec_original[1][0],
+                        vec_original[0][1] - vec_original[1][1],
+                        vec_original[0][2] - vec_original[1][2],
+                    },
+                    {
+                        vec_original[0][0] - vec_original[2][0],
+                        vec_original[0][1] - vec_original[2][1],
+                        vec_original[0][2] - vec_original[2][2],
+                    },
+                };
+
+                normalize(vecs[0]);
+                normalize(vecs[1]);
+                float normale[3];
+                crossProduct3(normale, vecs[0], vecs[1]);
+                normalize(normale);
+                float light_direction[3] = {
+                    lightSource[0] - (vec_original[0][0] + vec_original[1][0] + vec_original[2][0])/3,
+                    lightSource[1] - (vec_original[0][1] + vec_original[1][1] + vec_original[2][1])/3,
+                    lightSource[2] - (vec_original[0][2] + vec_original[1][2] + vec_original[2][2])/3,
+                };
+                normalize(light_direction);
+
+
+                // shape sun exposure
+                float direction = dotProduct3(normale, light_direction);
+                if (direction < 0)
+                    direction = 0;
+                //
+                printf("%f\n", direction);
+                
+                color.r *= (direction*0.8+0.1);
+                color.g *= (direction*0.8+0.1);
+                color.b *= (direction*0.8+0.1);
+
+            } //
+
+
+            // draw shape
             sfConvexShape_setPoint(shape, 0, vec[0]);
             sfConvexShape_setPoint(shape, 1, vec[1]);
             sfConvexShape_setPoint(shape, 2, vec[2]);
 
-            sfColor color;
-            memcpy(&color, mesh->tris[id]._color, sizeof(sfColor));
             sfConvexShape_setFillColor(shape, color);
             sfRenderWindow_drawConvexShape(window, shape, 0);
+            //
         }
-        free(sortBuffer);
 
-        free(points_transform);
+        free(sortBuffer);
+        free(points_transformed);
 
         sfConvexShape_destroy(shape);
 
