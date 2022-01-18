@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <SFML/Graphics.h>
 #include <SFML/Window/Keyboard.h>
@@ -27,6 +28,10 @@ typedef struct Mesh {
     size_t points_size;
 
 } Mesh_t;
+
+Mesh_t *mesh_create() {
+    return malloc(sizeof(Mesh_t));
+}
 
 void mesh_destroy(Mesh_t * mesh) {
     free(mesh->points);
@@ -87,6 +92,7 @@ Mesh_t * LoadFromObjectFile(char *filename) {
             line = endptr;
             mesh->points[point_count].p[2] = strtof(line, &endptr);
             line = endptr;
+            //printf("%f %f %f\n", mesh->points[point_count].p[0], mesh->points[point_count].p[1], mesh->points[point_count].p[2]);
 
             point_count++;
         } else if (line[0] == 'f') {
@@ -94,17 +100,19 @@ Mesh_t * LoadFromObjectFile(char *filename) {
             line += 2;
             char *endptr = line;
 
-            mesh->tris[point_count]._p[0] = strtof(line, &endptr);
+            mesh->tris[tri_count]._p[0] = strtol(line, &endptr, 0)-1;
             line = endptr;
-            mesh->tris[point_count]._p[1] = strtof(line, &endptr);
+            mesh->tris[tri_count]._p[1] = strtol(line, &endptr, 0)-1;
             line = endptr;
-            mesh->tris[point_count]._p[2] = strtof(line, &endptr);
+            mesh->tris[tri_count]._p[2] = strtol(line, &endptr, 0)-1;
             line = endptr;
 
-            mesh->tris[point_count]._color[0] = (unsigned char)rand();
-            mesh->tris[point_count]._color[1] = (unsigned char)rand();
-            mesh->tris[point_count]._color[2] = (unsigned char)rand();
-            mesh->tris[point_count]._color[3] = 255;
+            //printf("%i %i %i\n", mesh->tris[tri_count]._p[0], mesh->tris[tri_count]._p[1], mesh->tris[tri_count]._p[2]);
+
+            mesh->tris[tri_count]._color[0] = (unsigned char)rand();
+            mesh->tris[tri_count]._color[1] = (unsigned char)rand();
+            mesh->tris[tri_count]._color[2] = (unsigned char)rand();
+            mesh->tris[tri_count]._color[3] = 255;
             
             tri_count++;
         }
@@ -119,6 +127,25 @@ Mesh_t * LoadFromObjectFile(char *filename) {
 
 int main() {
     Mesh_t *mesh = LoadFromObjectFile("axis.obj");
+
+/*    Mesh_t *mesh = mesh_create();
+    Point_t vecs[] = {
+        {1, 1},
+        {1, 2},
+        {2, 1},
+    };
+
+    Triangle_t tris[1];
+    tris[0]._p[0] = 0;
+    tris[0]._p[1] = 1;
+    tris[0]._p[2] = 2;
+
+    
+    mesh->points_size = 3;
+    mesh->points = vecs;
+    mesh->tris_size = 1;
+    mesh->tris = tris;*/
+
 
     sfVideoMode mode = {800, 600, 32};
     sfRenderWindow* window = sfRenderWindow_create(mode, "Max & Flo 3D workshop", sfResize | sfClose, NULL);
@@ -158,14 +185,6 @@ int main() {
             Mat4x4_destroy(tmp);
         }
         if (sfKeyboard_isKeyPressed(sfKeyQ)) {
-            float vec[3] = {1, 0, 0};
-            Mat4x4 *matMov = mat4x4_t(vec);
-            Mat4x4 *tmp = matWorld;
-            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
-            Mat4x4_destroy(matMov);
-            Mat4x4_destroy(tmp);
-        }
-        if (sfKeyboard_isKeyPressed(sfKeyD)) {
             float vec[3] = {-1, 0, 0};
             Mat4x4 *matMov = mat4x4_t(vec);
             Mat4x4 *tmp = matWorld;
@@ -173,8 +192,8 @@ int main() {
             Mat4x4_destroy(matMov);
             Mat4x4_destroy(tmp);
         }
-        if (sfKeyboard_isKeyPressed(sfKeyE)) {
-            float vec[3] = {0, 1, 0};
+        if (sfKeyboard_isKeyPressed(sfKeyD)) {
+            float vec[3] = {1, 0, 0};
             Mat4x4 *matMov = mat4x4_t(vec);
             Mat4x4 *tmp = matWorld;
             matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
@@ -182,6 +201,14 @@ int main() {
             Mat4x4_destroy(tmp);
         }
         if (sfKeyboard_isKeyPressed(sfKeyA)) {
+            float vec[3] = {0, 1, 0};
+            Mat4x4 *matMov = mat4x4_t(vec);
+            Mat4x4 *tmp = matWorld;
+            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
+            Mat4x4_destroy(matMov);
+            Mat4x4_destroy(tmp);
+        }
+        if (sfKeyboard_isKeyPressed(sfKeyE)) {
             float vec[3] = {0, -1, 0};
             Mat4x4 *matMov = mat4x4_t(vec);
             Mat4x4 *tmp = matWorld;
@@ -204,29 +231,82 @@ int main() {
             Mat4x4_destroy(matMov);
             Mat4x4_destroy(tmp);
         }
-        Point_t *buffer = malloc(sizeof(Point_t)*mesh->points_size);
+        if (sfKeyboard_isKeyPressed(sfKeyJ)) {
+            Mat4x4 *matMov = mat4x4_ry(-PI/180);
+            Mat4x4 *tmp = matWorld;
+            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
+            Mat4x4_destroy(matMov);
+            Mat4x4_destroy(tmp);
+            
+        }
+        if (sfKeyboard_isKeyPressed(sfKeyL)) {
+            Mat4x4 *matMov = mat4x4_ry(PI/180);
+            Mat4x4 *tmp = matWorld;
+            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
+            Mat4x4_destroy(matMov);
+            Mat4x4_destroy(tmp);
+        }
+        if (sfKeyboard_isKeyPressed(sfKeyI)) {
+            Mat4x4 *matMov = mat4x4_rx(-PI/180);
+            Mat4x4 *tmp = matWorld;
+            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
+            Mat4x4_destroy(matMov);
+            Mat4x4_destroy(tmp);
+            
+        }
+        if (sfKeyboard_isKeyPressed(sfKeyK)) {
+            Mat4x4 *matMov = mat4x4_rx(PI/180);
+            Mat4x4 *tmp = matWorld;
+            matWorld = mat4x4_MultiplyMat4x4(matWorld, matMov);
+            Mat4x4_destroy(matMov);
+            Mat4x4_destroy(tmp);
+        }
+
+
+        Point_t *points_transform = malloc(sizeof(Point_t)*mesh->points_size);
         for (size_t i = 0; i < mesh->points_size; ++i) {
-            //float *vec = mat4x4_MultiplyVector4(mesh->points[i].p);
-            //buffer[i] = 1;
+            float *vec = mat4x4_MultiplyVector3(matWorld, mesh->points[i].p);
+            memcpy(points_transform[i].p, vec, sizeof(float)*3);
+            printf("vec= %f %f %f\n", points_transform[i].p[0], points_transform[i].p[1], points_transform[i].p[2]);
+            points_transform[i].p[0] /= points_transform[i].p[2];
+            points_transform[i].p[1] /= points_transform[i].p[2];
+            free(vec);
         }
 
         sfConvexShape *shape = sfConvexShape_create();
         sfConvexShape_setPointCount(shape, 3);
-        sfVector2f vec[] = {
-            {100, 100},
-            {200, 100},
-            {100, 200}
-        };
-        sfConvexShape_setPoint(shape, 0, vec[0]);
-        sfConvexShape_setPoint(shape, 1, vec[1]);
-        sfConvexShape_setPoint(shape, 2, vec[2]);
-        sfColor color = {255, 255, 255, 255};
-        sfConvexShape_setFillColor(shape, color);
-        sfRenderWindow_drawConvexShape(window, shape, 0);
+
+        for (size_t i = 0; i < mesh->tris_size; ++i) {
+
+
+            float *points[3] = {
+                points_transform[mesh->tris[i]._p[0]].p,
+                points_transform[mesh->tris[i]._p[1]].p,
+                points_transform[mesh->tris[i]._p[2]].p
+            };
+            sfVector2f vec[] = {
+                {(points[0][0]+1)*(mode.width/2), (points[0][1]+1)*(mode.height/2)},
+                {(points[1][0]+1)*(mode.width/2), (points[1][1]+1)*(mode.height/2)},
+                {(points[2][0]+1)*(mode.width/2), (points[2][1]+1)*(mode.height/2)},
+            };
+            sfConvexShape_setPoint(shape, 0, vec[0]);
+            sfConvexShape_setPoint(shape, 1, vec[1]);
+            sfConvexShape_setPoint(shape, 2, vec[2]);
+
+            printf("vec0= %f %f\n", vec[0].x, vec[0].y);
+            printf("vec1= %f %f\n", vec[1].x, vec[1].y);
+            printf("vec2= %f %f\n", vec[2].x, vec[2].y);
+
+            sfColor color = {255, 255, 255, 255};
+            sfConvexShape_setFillColor(shape, color);
+            sfRenderWindow_drawConvexShape(window, shape, 0);
+        }
+        free(points_transform);
 
         sfConvexShape_destroy(shape);
 
         sfRenderWindow_display(window);
+        sfRenderWindow_clear(window, (sfColor){0, 0, 0, 0});
     }
 
     Mat4x4_destroy(matWorld);

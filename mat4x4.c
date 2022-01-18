@@ -9,10 +9,10 @@
 Mat4x4 *mat4x4_create() {
     Mat4x4 *mat = malloc(sizeof(Mat4x4));   
     memset(mat, 0, sizeof(Mat4x4));
-    mat->val[0] = 1;
-    mat->val[5] = 1;
-    mat->val[10] = 1;
-    mat->val[15] = 1;
+    mat->val[0*4+0] = 1;
+    mat->val[1*4+1] = 1;
+    mat->val[2*4+2] = 1;
+    mat->val[3*4+3] = 1;
     return mat;
 }
 
@@ -39,9 +39,9 @@ float *mat4x4_MultiplyVector4(Mat4x4 *mat, float *vector) {
 
 float *mat4x4_MultiplyVector3(Mat4x4 *mat, float *vector) {
     float *res = malloc(sizeof(float)*3);
-    res[0] = vector[0]*mat->val[0*4+0] + vector[1]*mat->val[1*4+0] + vector[2]*mat->val[2*4+0];
-    res[1] = vector[0]*mat->val[0*4+1] + vector[1]*mat->val[1*4+1] + vector[2]*mat->val[2*4+1];
-    res[2] = vector[0]*mat->val[0*4+2] + vector[1]*mat->val[1*4+2] + vector[2]*mat->val[2*4+2];
+    res[0] = vector[0]*mat->val[0*4+0] + vector[1]*mat->val[1*4+0] + vector[2]*mat->val[2*4+0] + mat->val[3*4+0];
+    res[1] = vector[0]*mat->val[0*4+1] + vector[1]*mat->val[1*4+1] + vector[2]*mat->val[2*4+1] + mat->val[3*4+1];
+    res[2] = vector[0]*mat->val[0*4+2] + vector[1]*mat->val[1*4+2] + vector[2]*mat->val[2*4+2] + mat->val[3*4+2];
     return res;
 }
 

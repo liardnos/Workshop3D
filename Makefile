@@ -19,7 +19,7 @@ run: clear all
 	./$(NAME)
 
 valgrind: clear all
-	valgrind --leak-check=full --show-leak-kinds=definite ./$(NAME)
+	valgrind --track-origins=yes --leak-check=full --show-leak-kinds=definite ./$(NAME)
 
 re: clear clean all
 
