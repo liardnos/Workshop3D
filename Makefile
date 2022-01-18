@@ -1,5 +1,6 @@
 SRC = 	main.c \
-		mat4x4.c 
+		mat4x4.c \
+		utils.c \
 
 
 OBJ = $(SRC:.c=.o)
